@@ -17,6 +17,7 @@
 
 namespace PhpOffice\PhpPresentation\Reader;
 
+use Imagick;
 use PhpOffice\PhpPresentation\DocumentLayout;
 use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\Shape\Placeholder;
@@ -726,7 +727,7 @@ class PowerPoint2007 implements ReaderInterface
                     }
                 }
                 $pathImage = implode('/', $pathImage);
-                $imageFile = $this->oZip->getFromName($pathImage);
+                $imageFile = $this->resolveImage($this->oZip->getFromName($pathImage));
                 if (!empty($imageFile)) {
                     $oShape->setImageResource(imagecreatefromstring($imageFile));
                 }
@@ -1265,6 +1266,32 @@ class PowerPoint2007 implements ReaderInterface
                 default:
                     //var_export($oNode->tagName);
             }
+        }
+    }
+
+    /**
+     * Resolve image
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function resolveImage(string $content)
+    {
+        $file = tmpfile();
+        fwrite($file, $content);
+
+        $meta = stream_get_meta_data($file);
+
+        switch (mime_content_type($file)) {
+            case 'image/tiff':
+                $imagick = new Imagick();
+                $imagick->readImage($meta['uri']);
+                $imagick->setImageFormat('png');
+
+                return $imagick->getImagesBlob();
+
+            default:
+                return $content;
         }
     }
 }
